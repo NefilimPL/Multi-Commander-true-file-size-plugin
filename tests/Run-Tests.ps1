@@ -3,6 +3,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 
 $testFiles = @(
     Join-Path $PSScriptRoot "ReleaseHelpers.Tests.ps1"
+    Join-Path $PSScriptRoot "PluginBehavior.Tests.ps1"
 )
 
 foreach ($testFile in $testFiles) {

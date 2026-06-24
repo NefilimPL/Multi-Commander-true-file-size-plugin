@@ -26,6 +26,8 @@
 #include <cstdint>
 #include <cwctype>
 #include <climits>
+#include <mutex>
+#include <unordered_map>
 
 // Multi Commander SDK include path is supplied by the Visual Studio project via MCSDKDir.
 #include "FilePropertiesPlugin.h"
