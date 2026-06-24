@@ -39,7 +39,7 @@ Runner selection is two-stage:
 
 The current repository runners use labels `self-hosted`, `Windows`, and `X64`. This keeps the workflow future-proof when more compatible runners are added.
 
-The preflight should use an optional secret named `RUNNER_STATUS_TOKEN` for API access. If the secret is missing, invalid, or the API call fails, the workflow must fall back to `windows-latest` instead of waiting forever for a self-hosted runner.
+The preflight should use an optional secret named `RUNNER_STATUS_TOKEN` for API access. If the secret is missing, the workflow cannot verify runner availability and should use the self-hosted labels by default. If the secret is configured but no online non-busy self-hosted runner is found, or the API call fails, the workflow must fall back to `windows-latest`.
 
 ## Artifact Policy
 

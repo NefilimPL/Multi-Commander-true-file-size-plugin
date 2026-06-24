@@ -133,7 +133,7 @@ artifacts\release\MCRealDiskSize-v1.0.0-x64.zip
 
 Workflow release uruchamia się dla GitHub Release oraz tagów w formacie `V1.0.0`, `v1.0.0`, `V1.0.0.1` albo `v1.0.0.1`. Wersja pluginu w DLL i nazwie ZIP pochodzi z taga bez początkowego `V`/`v`.
 
-Build najpierw próbuje użyć dostępnego self-hosted runnera z labelami `self-hosted`, `Windows`, `X64`. Żeby preflight mógł sprawdzić dostępność runnerów przez GitHub API, dodaj secret `RUNNER_STATUS_TOKEN` z uprawnieniem odczytu administracji repozytorium. Jeżeli tokenu nie ma albo nie ma wolnego self-hosted runnera, workflow użyje `windows-latest` i dodatkowo zapisze ZIP jako Actions artifact.
+Build najpierw próbuje użyć self-hosted runnera z labelami `self-hosted`, `Windows`, `X64`. Jeżeli nie dodasz secreta `RUNNER_STATUS_TOKEN`, workflow nie może sprawdzić dostępności runnerów przez GitHub API i wybiera self-hosted jako domyślną ścieżkę. Żeby włączyć automatyczny fallback na `windows-latest`, dodaj secret `RUNNER_STATUS_TOKEN` z uprawnieniem odczytu administracji repozytorium. Wtedy workflow sprawdzi dostępność runnera; jeśli nie znajdzie wolnego self-hosted runnera, użyje `windows-latest` i dodatkowo zapisze ZIP jako Actions artifact.
 
 ## Włączenie kolumn w Multi Commanderze
 

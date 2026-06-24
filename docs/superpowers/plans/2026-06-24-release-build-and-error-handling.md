@@ -419,9 +419,10 @@ jobs:
           $hosted = '"windows-latest"'
 
           if ([string]::IsNullOrWhiteSpace($env:RUNNER_STATUS_TOKEN)) {
-            Write-Host "RUNNER_STATUS_TOKEN is not configured. Falling back to windows-latest."
-            "runner=$hosted" >> $env:GITHUB_OUTPUT
-            "fallback=true" >> $env:GITHUB_OUTPUT
+            Write-Host "RUNNER_STATUS_TOKEN is not configured. Cannot verify runner availability."
+            Write-Host "Using self-hosted labels by default. Configure RUNNER_STATUS_TOKEN for automatic windows-latest fallback."
+            "runner=$selfHosted" >> $env:GITHUB_OUTPUT
+            "fallback=false" >> $env:GITHUB_OUTPUT
             exit 0
           }
 
