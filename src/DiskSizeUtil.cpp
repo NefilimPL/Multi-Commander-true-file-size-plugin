@@ -341,7 +341,7 @@ namespace MCRealDiskSize
 
         DWORD attrs = GetAttributesSafe(path);
         if (attrs == INVALID_FILE_ATTRIBUTES)
-            return L"ERROR";
+            return L"UNKNOWN";
 
         if (fileItem)
         {

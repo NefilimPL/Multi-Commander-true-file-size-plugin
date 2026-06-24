@@ -1,0 +1,128 @@
+name: Release DLL
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'V*'
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, for example V1.0.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  preflight:
+    name: Select runner
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.select.outputs.runner }}
+      fallback: ${{ steps.select.outputs.fallback }}
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "release") {
+            $tag = "${{ github.event.release.tag_name }}"
+          }
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}"
+          }
+
+          if ($tag -notmatch '^[Vv](\d+\.\d+\.\d+(\.\d+)?)$') {
+            throw "Invalid release tag '$tag'. Expected V1.0.0 or V1.0.0.1."
+          }
+
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "version=$($Matches[1])" >> $env:GITHUB_OUTPUT
+
+      - name: Select build runner
+        id: select
+        shell: pwsh
+        env:
+          RUNNER_STATUS_TOKEN: ${{ secrets.RUNNER_STATUS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          $selfHosted = '["self-hosted","Windows","X64"]'
+          $hosted = '"windows-latest"'
+
+          if ([string]::IsNullOrWhiteSpace($env:RUNNER_STATUS_TOKEN)) {
+            Write-Host "RUNNER_STATUS_TOKEN is not configured. Cannot verify runner availability."
+            Write-Host "Using self-hosted labels by default. Configure RUNNER_STATUS_TOKEN for automatic windows-latest fallback."
+            "runner=$selfHosted" >> $env:GITHUB_OUTPUT
+            "fallback=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          try {
+            $headers = @{
+              Authorization = "Bearer $env:RUNNER_STATUS_TOKEN"
+              Accept = "application/vnd.github+json"
+              "X-GitHub-Api-Version" = "2022-11-28"
+            }
+            $uri = "https://api.github.com/repos/$env:REPOSITORY/actions/runners?per_page=100"
+            $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
+            $runner = $response.runners | Where-Object {
+              $_.status -eq "online" -and
+              -not $_.busy -and
+              (($_.labels | ForEach-Object { $_.name }) -contains "self-hosted") -and
+              (($_.labels | ForEach-Object { $_.name }) -contains "Windows") -and
+              (($_.labels | ForEach-Object { $_.name }) -contains "X64")
+            } | Select-Object -First 1
+
+            if ($runner) {
+              Write-Host "Using self-hosted runner labels: self-hosted, Windows, X64"
+              "runner=$selfHosted" >> $env:GITHUB_OUTPUT
+              "fallback=false" >> $env:GITHUB_OUTPUT
+            }
+            else {
+              Write-Host "No online idle self-hosted Windows X64 runner found. Falling back to windows-latest."
+              "runner=$hosted" >> $env:GITHUB_OUTPUT
+              "fallback=true" >> $env:GITHUB_OUTPUT
+            }
+          }
+          catch {
+            Write-Host "Could not query self-hosted runners: $($_.Exception.Message)"
+            Write-Host "Falling back to windows-latest."
+            "runner=$hosted" >> $env:GITHUB_OUTPUT
+            "fallback=true" >> $env:GITHUB_OUTPUT
+          }
+
+  build:
+    name: Build DLL
+    needs: preflight
+    runs-on: ${{ fromJSON(needs.preflight.outputs.runner) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release package
+        id: package
+        shell: pwsh
+        run: |
+          .\scripts\New-ReleasePackage.ps1 -Version '${{ needs.preflight.outputs.version }}' -Platform x64 -Configuration Release
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          files: ${{ steps.package.outputs.zip_path }}
+          fail_on_unmatched_files: true
+
+      - name: Upload fallback Actions artifact
+        if: needs.preflight.outputs.fallback == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.zip_name }}
+          path: ${{ steps.package.outputs.zip_path }}
+          if-no-files-found: error

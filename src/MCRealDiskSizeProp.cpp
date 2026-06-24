@@ -2,6 +2,10 @@
 #include "MCRealDiskSizeProp.h"
 #include "DiskSizeUtil.h"
 
+#ifndef MCREALDISKSIZE_VERSION
+#define MCREALDISKSIZE_VERSION "0.1.2.0"
+#endif
+
 using namespace MCNS;
 
 namespace
@@ -48,7 +52,7 @@ bool MCRealDiskSizeProp::GetExtensionInfo(DLLExtensionInfo* pInfo)
     CopyWide(pInfo->wsURL, ARRAYSIZE(pInfo->wsURL), L"https://multicommander.com");
     CopyWide(pInfo->wsDesc, ARRAYSIZE(pInfo->wsDesc), L"Adds columns for real allocated size on disk and OneDrive/Cloud Files state.");
     CopyWide(pInfo->wsBaseName, ARRAYSIZE(pInfo->wsBaseName), L"MCRealDiskSize");
-    CopyAnsi(pInfo->strVersion, ARRAYSIZE(pInfo->strVersion), "0.1.2.0");
+    CopyAnsi(pInfo->strVersion, ARRAYSIZE(pInfo->strVersion), MCREALDISKSIZE_VERSION);
     CopyAnsi(pInfo->strGuid, ARRAYSIZE(pInfo->strGuid), m_GuidString);
 
 #ifdef _UNICODE
@@ -172,11 +176,9 @@ bool MCRealDiskSizeProp::GetPropStr(IFileItem* pFileItem, WCHAR* propData, WORD 
         const bool isDirectory = pFileItem->isFolder();
         MCRealDiskSize::SizeResult result = MCRealDiskSize::GetAllocatedSizeForPath(path, isDirectory, pAbort);
 
-        // Never leave the column silently empty. If the Windows call fails, show the error code.
-        // This makes debugging much easier on OneDrive/reparse-point edge cases.
         if (!result.ok)
         {
-            StringCchPrintfW(propData, nLen, L"ERR:%lu", result.lastError);
+            propData[0] = L'\0';
             return true;
         }
 
