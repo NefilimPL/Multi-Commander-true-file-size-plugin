@@ -5,11 +5,18 @@ param(
     [ValidateSet("Release", "Debug")]
     [string]$Configuration = "Release",
 
-    [string]$SDKDir = ""
+    [string]$SDKDir = "",
+
+    [string]$PluginVersion = ""
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "ReleaseHelpers.ps1")
+
+if (-not [string]::IsNullOrWhiteSpace($PluginVersion) -and -not (Test-PluginVersion $PluginVersion)) {
+    throw "Invalid plugin version '$PluginVersion'. Expected 1.0.0 or 1.0.0.1."
+}
 
 if ([string]::IsNullOrWhiteSpace($SDKDir)) {
     $SDKDir = Join-Path $root "external\MultiCommander-SDK-main\MultiCommander\SDK"
@@ -48,8 +55,23 @@ Write-Host "Building: $project"
 Write-Host "Platform: $Platform"
 Write-Host "Configuration: $Configuration"
 Write-Host "SDKDir: $SDKDir"
+if (-not [string]::IsNullOrWhiteSpace($PluginVersion)) {
+    Write-Host "PluginVersion: $PluginVersion"
+}
 
-& $msbuild $project /m /p:Configuration=$Configuration /p:Platform=$Platform /p:MCSDKDir="$SDKDir" /t:Rebuild
+$msbuildArgs = @(
+    $project,
+    "/m",
+    "/p:Configuration=$Configuration",
+    "/p:Platform=$Platform",
+    "/p:MCSDKDir=$SDKDir",
+    "/t:Rebuild"
+)
+if (-not [string]::IsNullOrWhiteSpace($PluginVersion)) {
+    $msbuildArgs += "/p:MCRealDiskSizeVersion=$PluginVersion"
+}
+
+& $msbuild @msbuildArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Build failed with exit code $LASTEXITCODE"
 }
