@@ -106,6 +106,9 @@ namespace MCRealDiskSize
 
         unsigned long long GetClusterSizeForPath(const std::wstring& path)
         {
+            static std::mutex clusterSizeCacheMutex;
+            static std::unordered_map<std::wstring, unsigned long long> clusterSizeCache;
+
             wchar_t root[MAX_PATH] = {};
             std::wstring pathForVolume = path;
 
@@ -118,6 +121,13 @@ namespace MCRealDiskSize
             if (!GetVolumePathNameW(pathForVolume.c_str(), root, ARRAYSIZE(root)))
                 return 1;
 
+            {
+                std::lock_guard<std::mutex> lock(clusterSizeCacheMutex);
+                auto it = clusterSizeCache.find(root);
+                if (it != clusterSizeCache.end())
+                    return it->second;
+            }
+
             DWORD sectorsPerCluster = 0;
             DWORD bytesPerSector = 0;
             DWORD freeClusters = 0;
@@ -128,7 +138,14 @@ namespace MCRealDiskSize
 
             const unsigned long long cluster = static_cast<unsigned long long>(sectorsPerCluster) *
                                                static_cast<unsigned long long>(bytesPerSector);
-            return cluster == 0 ? 1 : cluster;
+            const unsigned long long value = cluster == 0 ? 1 : cluster;
+
+            {
+                std::lock_guard<std::mutex> lock(clusterSizeCacheMutex);
+                clusterSizeCache[root] = value;
+            }
+
+            return value;
         }
 
         SizeResult GetCompressedSize(const std::wstring& path)
@@ -154,10 +171,6 @@ namespace MCRealDiskSize
 
         SizeResult GetAllocatedSizeForFile(const std::wstring& path, unsigned long long logicalSize, DWORD attrs)
         {
-            SizeResult compressed = GetCompressedSize(path);
-            if (!compressed.ok)
-                return compressed;
-
             SizeResult result;
             result.ok = true;
             result.lastError = ERROR_SUCCESS;
@@ -166,8 +179,7 @@ namespace MCRealDiskSize
             // For normal files Windows Explorer normally rounds to allocation units / clusters.
             if (IsSparseCompressedOrCloud(attrs))
             {
-                result.bytes = compressed.bytes;
-                return result;
+                return GetCompressedSize(path);
             }
 
             const unsigned long long cluster = GetClusterSizeForPath(path);

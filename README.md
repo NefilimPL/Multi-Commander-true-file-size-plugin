@@ -7,7 +7,7 @@ Plugin typu **FileProperties** dla Multi Commandera, który dodaje kolumny pokaz
 Po instalacji w konfiguracji kolumn powinny pojawić się kolumny z kategorii **Real Disk Size**:
 
 - **Rozmiar na dysku** / **Na dysku** – czytelny rozmiar, np. `0 B`, `128 KB`, `1.42 GB`.
-- **Rozmiar na dysku RAW** / **Na dysku RAW** – liczba bajtów, przydatna do sortowania i filtrowania.
+- **Rozmiar na dysku RAW** / **Na dysku RAW** – ta sama zerami uzupełniona liczba bajtów, przydatna diagnostycznie.
 - **Status lokalny/OneDrive** / **Status dysku** – atrybuty typu `ONLINE_ONLY`, `LOCAL_AVAILABLE`, `ALWAYS_LOCAL`, `UNPINNED`, `PINNED`, `OFFLINE`, `RECALL_ON_DATA_ACCESS`, `SPARSE`, `COMPRESSED`.
 
 ## Ważne ograniczenie
@@ -171,15 +171,12 @@ Sprawdź po kolei:
 
 Dla plików sparse, skompresowanych i cloud-placeholder plugin używa `GetCompressedFileSizeW`, czyli API Windows zwracające rzeczywisty użyty rozmiar przechowywania. Dla zwykłych nieskompresowanych plików wynik jest zaokrąglany do rozmiaru klastra woluminu, aby lepiej odpowiadał temu, co Windows pokazuje jako „size on disk”.
 
+Plugin cache'uje wyliczony rozmiar na obiekcie pliku Multi Commandera, więc równoczesne włączenie kolumn `Na dysku` i `Na dysku RAW` nie powinno liczyć tego samego elementu dwa razy. Rozmiar klastra jest cache'owany per wolumin.
 
-## v0.1.2 note
+## Uwagi o sortowaniu i układzie kolumn
 
-This build registers the size columns as string properties instead of numeric properties.
-Reason: on Multi Commander 15.8 with the public SDK compatibility override, string properties render correctly, while the first numeric columns may stay empty.
+Kolumna `Na dysku` jest zarejestrowana jako właściwość tekstowa dla zgodności z Multi Commanderem 15.8. Zwraca czytelny tekst bezpośrednio z `GetPropStr`, bo próba użycia osobnej wartości wyświetlanej przez `GetDisplayValue` powodowała puste komórki w MC 15.8.
 
-Columns:
-- `Na dysku` shows a readable allocated size such as `0 B`, `64 KB`, `1.42 GB`.
-- `Na dysku RAW` shows a zero-padded byte count. It is ugly, but it sorts correctly as text.
-- `Status dysku` shows OneDrive/Cloud Files attributes.
+Konsekwencja: sortowanie po czytelnej kolumnie `Na dysku` jest sortowaniem tekstowym. Do poprawnego sortowania według bajtów użyj kolumny `Na dysku RAW`, która pokazuje zerami uzupełnioną liczbę bajtów i sortuje się poprawnie jako tekst.
 
-If you still see old blank columns, remove the old columns from the layout and add them again from `Customize columns...`.
+Jeżeli po aktualizacji Multi Commander zachowa stary układ albo ukryje kolumny, usuń stare kolumny z layoutu i dodaj je ponownie z `Customize columns...`. Nazwy maszynowe kolumn pozostały bez zmian.

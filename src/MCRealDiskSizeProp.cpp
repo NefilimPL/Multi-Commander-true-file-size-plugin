@@ -14,6 +14,8 @@ namespace
     constexpr WORD PROP_REAL_DISK_SIZE_RAW = 101;
     constexpr WORD PROP_CLOUD_STATUS = 102;
 
+    WORD g_ExtensionID = 0;
+
     void CopyWide(WCHAR* dst, size_t dstCount, const WCHAR* src)
     {
         if (!dst || dstCount == 0)
@@ -35,6 +37,52 @@ namespace
             return L"";
         item->Get_FullPath(path, ARRAYSIZE(path));
         return path;
+    }
+
+    bool TryGetCachedAllocatedSize(IFileItem* item, unsigned long long& bytes)
+    {
+        if (!item || g_ExtensionID == 0)
+            return false;
+
+        ExtraProp prop;
+        ZeroMemory(&prop, sizeof(ExtraProp));
+        if (!item->GetExtraPropData(g_ExtensionID, PROP_REAL_DISK_SIZE, &prop))
+            return false;
+
+        if ((prop.Flag & ZFXP_VAL64) == 0 || prop.value64 < 0)
+            return false;
+
+        bytes = static_cast<unsigned long long>(prop.value64);
+        return true;
+    }
+
+    void SetCachedAllocatedSize(IFileItem* item, unsigned long long bytes)
+    {
+        if (!item || g_ExtensionID == 0 || bytes > static_cast<unsigned long long>(LLONG_MAX))
+            return;
+
+        ExtraProp prop;
+        ZeroMemory(&prop, sizeof(ExtraProp));
+        prop.ClearOnUpdate = true;
+        prop.ClearOnRename = true;
+        prop.Flag = ZFXP_VAL64;
+        prop.value64 = static_cast<INT64>(bytes);
+        item->SetExtraPropData(g_ExtensionID, PROP_REAL_DISK_SIZE, &prop);
+    }
+
+    MCRealDiskSize::SizeResult GetAllocatedSizeForItem(IFileItem* item, const volatile bool* abortFlag)
+    {
+        unsigned long long cachedBytes = 0;
+        if (TryGetCachedAllocatedSize(item, cachedBytes))
+            return { true, cachedBytes, ERROR_SUCCESS };
+
+        const std::wstring path = GetFullPath(item);
+        const bool isDirectory = item && item->isFolder();
+        MCRealDiskSize::SizeResult result = MCRealDiskSize::GetAllocatedSizeForPath(path, isDirectory, abortFlag);
+        if (result.ok)
+            SetCachedAllocatedSize(item, result.bytes);
+
+        return result;
     }
 }
 
@@ -89,10 +137,8 @@ long MCRealDiskSizeProp::PreStartInit(IMultiAppInterface* pAppInterface)
     fpd.PropertyId = PROP_REAL_DISK_SIZE;
     fpd.IdealWidth = 95;
     fpd.Align = DT_RIGHT;
-    // v0.1.2: register as STRING, because in MC 15.8 the numeric callback loaded
-    // but did not get rendered for these columns when using the public SDK compatibility shim.
-    // Returning strings is less elegant, but it is much more reliable: the same callback path
-    // is already proven to work by the Status column.
+    // Keep this as STRING for MC 15.8 compatibility: numeric properties may load
+    // but render blank with the public SDK compatibility shim.
     fpd.dwOptions = FILEPROP_STRING |
                     FILEPROP_ASYNC |
                     FILEPROP_CUSTOMIZABLE |
@@ -141,6 +187,7 @@ long MCRealDiskSizeProp::PreStartInit(IMultiAppInterface* pAppInterface)
     propMan->RegisterProperty(&fpd);
 
     pAppInterface->ReleaseInterface(reinterpret_cast<ZHANDLE>(propMan), ZOBJ_PROPMANGER);
+    g_ExtensionID = pAppInterface->ModuleIDStrToID(m_GuidString);
     return 0;
 }
 
@@ -169,12 +216,9 @@ bool MCRealDiskSizeProp::GetPropStr(IFileItem* pFileItem, WCHAR* propData, WORD 
     if (!pFileItem || !propData || nLen == 0)
         return false;
 
-    const std::wstring path = GetFullPath(pFileItem);
-
     if (PropertyId == PROP_REAL_DISK_SIZE || PropertyId == PROP_REAL_DISK_SIZE_RAW)
     {
-        const bool isDirectory = pFileItem->isFolder();
-        MCRealDiskSize::SizeResult result = MCRealDiskSize::GetAllocatedSizeForPath(path, isDirectory, pAbort);
+        MCRealDiskSize::SizeResult result = GetAllocatedSizeForItem(pFileItem, pAbort);
 
         if (!result.ok)
         {
@@ -196,6 +240,7 @@ bool MCRealDiskSizeProp::GetPropStr(IFileItem* pFileItem, WCHAR* propData, WORD 
 
     if (PropertyId == PROP_CLOUD_STATUS)
     {
+        const std::wstring path = GetFullPath(pFileItem);
         const std::wstring status = MCRealDiskSize::GetCloudStatusText(path, pFileItem);
         StringCchCopyW(propData, nLen, status.c_str());
         return true;
@@ -212,9 +257,7 @@ bool MCRealDiskSizeProp::GetPropNum(IFileItem* pFileItem, INT64* propData, WORD 
     if (PropertyId != PROP_REAL_DISK_SIZE && PropertyId != PROP_REAL_DISK_SIZE_RAW)
         return false;
 
-    const std::wstring path = GetFullPath(pFileItem);
-    const bool isDirectory = pFileItem->isFolder();
-    MCRealDiskSize::SizeResult result = MCRealDiskSize::GetAllocatedSizeForPath(path, isDirectory, pAbort);
+    MCRealDiskSize::SizeResult result = GetAllocatedSizeForItem(pFileItem, pAbort);
     if (!result.ok)
         return false;
 
