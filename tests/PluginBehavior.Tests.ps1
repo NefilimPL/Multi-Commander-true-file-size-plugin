@@ -76,8 +76,17 @@ Assert-True ($stringValueBranch -match "PropertyId\s*==\s*PROP_REAL_DISK_SIZE_RA
     "GetPropStr must keep a separate RAW branch for the zero-padded byte sort key."
 Assert-True ($stringValueBranch -match "StringCchPrintfW\(propData,\s*nLen,\s*L`"%020llu`",\s*result\.bytes\)") `
     "RAW must return a zero-padded byte string so text sorting remains numeric there."
-Assert-True ($stringValueBranch -match "FormatBytes\(result\.bytes\)" -and $stringValueBranch -match "StringCchCopyW\(propData,\s*nLen,\s*formatted\.c_str\(\)\)") `
-    "The visible allocated-size column must return readable text directly from GetPropStr."
+Assert-True ($stringValueBranch -match "FormatSortableBytes\(result\.bytes\)" -and $stringValueBranch -match "StringCchCopyW\(propData,\s*nLen,\s*formatted\.c_str\(\)\)") `
+    "The visible allocated-size column must return sortable readable text directly from GetPropStr."
+
+Assert-True ($diskSource -match "std::wstring\s+FormatSortableBytes\(unsigned long long bytes\)") `
+    "DiskSizeUtil must expose a sortable formatter for the visible allocated-size column."
+Assert-True ($diskSource -match "MakeHiddenSortKey\(bytes\)\s*\+\s*FormatBytes\(bytes\)") `
+    "The sortable formatter must keep the visible text identical to FormatBytes while prepending only a hidden sort key."
+Assert-True ($diskSource -match "AppendUnicodeTagDigit" -and $diskSource -match "0xE0030u") `
+    "The hidden sort key must encode padded byte digits as Unicode tag characters so they do not render in the column."
+Assert-False ($diskSource -match "L`"%u: %07\.2f %s`"" -or $diskSource -match "sortablePrefix") `
+    "The visible allocated-size column must not show technical sort prefixes such as '3:' or fixed-width values."
 
 $allocatedFileFunction = Get-Section `
     -Text $diskSource `
