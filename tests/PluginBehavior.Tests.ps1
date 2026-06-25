@@ -81,10 +81,12 @@ Assert-True ($stringValueBranch -match "FormatSortableBytes\(result\.bytes\)" -a
 
 Assert-True ($diskSource -match "std::wstring\s+FormatSortableBytes\(unsigned long long bytes\)") `
     "DiskSizeUtil must expose a sortable formatter for the visible allocated-size column."
-Assert-True ($diskSource -match "sortablePrefix" -and $diskSource -match "unitIndex") `
-    "The sortable formatter must include a unit-order prefix so GB sorts after MB/KB as text."
-Assert-True ($diskSource -match "StringCchPrintfW\(buffer,\s*ARRAYSIZE\(buffer\),\s*L`"%u: %07\.2f %s`"") `
-    "The sortable formatter must use fixed-width numeric text so values in the same unit sort numerically."
+Assert-True ($diskSource -match "MakeHiddenSortKey\(bytes\)\s*\+\s*FormatBytes\(bytes\)") `
+    "The sortable formatter must keep the visible text identical to FormatBytes while prepending only a hidden sort key."
+Assert-True ($diskSource -match "AppendUnicodeTagDigit" -and $diskSource -match "0xE0030u") `
+    "The hidden sort key must encode padded byte digits as Unicode tag characters so they do not render in the column."
+Assert-False ($diskSource -match "L`"%u: %07\.2f %s`"" -or $diskSource -match "sortablePrefix") `
+    "The visible allocated-size column must not show technical sort prefixes such as '3:' or fixed-width values."
 
 $allocatedFileFunction = Get-Section `
     -Text $diskSource `
