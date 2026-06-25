@@ -40,6 +40,7 @@ function Get-Section {
 }
 
 $propSource = Get-Content -LiteralPath (Join-Path $repoRoot "src\MCRealDiskSizeProp.cpp") -Raw
+$propHeader = Get-Content -LiteralPath (Join-Path $repoRoot "src\MCRealDiskSizeProp.h") -Raw
 $diskSource = Get-Content -LiteralPath (Join-Path $repoRoot "src\DiskSizeUtil.cpp") -Raw
 
 $allocatedColumnRegistration = Get-Section `
@@ -84,6 +85,21 @@ Assert-False ($diskSource -match "0xE0030u" -or $diskSource -match "0xE007Fu" -o
     "The plugin must not generate Unicode tag-character sort keys for visible column text."
 Assert-False ($diskSource -match "L`"%u: %07\.2f %s`"" -or $diskSource -match "sortablePrefix") `
     "The visible allocated-size column must not show technical sort prefixes such as '3:' or fixed-width values."
+
+$vtableTailSection = Get-Section `
+    -Text $propHeader `
+    -StartPattern "bool SetProp\(IFileItem\* pFileItem,\s*WORD PropertyId,\s*const BYTE\* propData\) override;" `
+    -EndPattern "private:" `
+    -Message "Could not find the tail of MCRealDiskSizeProp's virtual method declarations."
+
+Assert-True ($vtableTailSection -match "bool Execute\(ExecuteInfo\* pExecuteInfo\) override;") `
+    "MCRealDiskSizeProp must explicitly keep Execute at the end of the public SDK 2.4 IFileProperties vtable."
+Assert-True ($vtableTailSection -match "virtual bool ReservedForMultiCommander25VTable0\(IFileItem\* pFileItem\);" -and
+             $vtableTailSection -match "virtual bool ReservedForMultiCommander25VTable1\(IFileItem\* pFileItem\);") `
+    "MCRealDiskSizeProp must reserve two additional tail vtable slots because Multi Commander 15.8 calls an IFileProperties entry at vtable offset +0x78 during refresh."
+Assert-True ($propSource -match "bool MCRealDiskSizeProp::ReservedForMultiCommander25VTable0\(IFileItem\* /\*pFileItem\*/\)\s*\{\s*return false;\s*\}" -and
+             $propSource -match "bool MCRealDiskSizeProp::ReservedForMultiCommander25VTable1\(IFileItem\* /\*pFileItem\*/\)\s*\{\s*return false;\s*\}") `
+    "The Multi Commander 15.8 reserved vtable slots must be implemented as safe no-op methods."
 
 $allocatedFileFunction = Get-Section `
     -Text $diskSource `
