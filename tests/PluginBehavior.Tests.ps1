@@ -77,12 +77,14 @@ Assert-True ($stringValueBranch -match "PropertyId\s*==\s*PROP_REAL_DISK_SIZE_RA
     "GetPropStr must keep a separate RAW branch for the zero-padded byte sort key."
 Assert-True ($stringValueBranch -match "StringCchPrintfW\(propData,\s*nLen,\s*L`"%020llu`",\s*result\.bytes\)") `
     "RAW must return a zero-padded byte string so text sorting remains numeric there."
-Assert-True ($stringValueBranch -match "FormatBytes\(result\.bytes\)" -and $stringValueBranch -match "StringCchCopyW\(propData,\s*nLen,\s*formatted\.c_str\(\)\)") `
-    "The visible allocated-size column must return only readable text directly from GetPropStr."
-Assert-False ($stringValueBranch -match "FormatSortableBytes") `
-    "The visible allocated-size column must not prepend hidden sort keys; Multi Commander 15.8 can crash after refresh when cached column text contains hidden Unicode tag characters."
-Assert-False ($diskSource -match "0xE0030u" -or $diskSource -match "0xE007Fu" -or $diskSource -match "AppendUnicodeTagDigit" -or $diskSource -match "MakeHiddenSortKey") `
-    "The plugin must not generate Unicode tag-character sort keys for visible column text."
+Assert-True ($stringValueBranch -match "FormatSortableBytes\(result\.bytes\)" -and $stringValueBranch -match "StringCchCopyW\(propData,\s*nLen,\s*formatted\.c_str\(\)\)") `
+    "The visible allocated-size column must prepend a hidden byte sort key so Multi Commander sorts it by bytes instead of readable text."
+Assert-True ($diskSource -match "std::wstring\s+FormatSortableBytes\(unsigned long long bytes\)") `
+    "DiskSizeUtil must expose a sortable formatter for the visible allocated-size column."
+Assert-True ($diskSource -match "MakeHiddenSortKey\(bytes\)\s*\+\s*FormatBytes\(bytes\)") `
+    "The sortable formatter must keep the visible text readable while prepending only a hidden byte sort key."
+Assert-True ($diskSource -match "AppendUnicodeTagDigit" -and $diskSource -match "0xE0030u" -and $diskSource -match "0xE007Fu") `
+    "The hidden sort key must encode padded byte digits as Unicode tag characters so they do not render in the column."
 Assert-False ($diskSource -match "L`"%u: %07\.2f %s`"" -or $diskSource -match "sortablePrefix") `
     "The visible allocated-size column must not show technical sort prefixes such as '3:' or fixed-width values."
 

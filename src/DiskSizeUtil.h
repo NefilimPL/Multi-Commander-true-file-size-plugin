@@ -12,5 +12,6 @@ namespace MCRealDiskSize
 
     SizeResult GetAllocatedSizeForPath(const std::wstring& path, bool isDirectory, const volatile bool* abortFlag);
     std::wstring FormatBytes(unsigned long long bytes);
+    std::wstring FormatSortableBytes(unsigned long long bytes);
     std::wstring GetCloudStatusText(const std::wstring& path, const MCNS::IFileItem* fileItem);
 }

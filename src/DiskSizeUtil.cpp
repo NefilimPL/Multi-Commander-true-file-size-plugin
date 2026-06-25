@@ -289,6 +289,40 @@ namespace MCRealDiskSize
                 parts.emplace_back(text);
         }
 
+        void AppendCodePoint(std::wstring& value, unsigned int codePoint)
+        {
+            if (codePoint <= 0xFFFFu)
+            {
+                value.push_back(static_cast<wchar_t>(codePoint));
+                return;
+            }
+
+            codePoint -= 0x10000u;
+            value.push_back(static_cast<wchar_t>(0xD800u + (codePoint >> 10)));
+            value.push_back(static_cast<wchar_t>(0xDC00u + (codePoint & 0x3FFu)));
+        }
+
+        void AppendUnicodeTagDigit(std::wstring& value, wchar_t digit)
+        {
+            AppendCodePoint(value, 0xE0030u + static_cast<unsigned int>(digit - L'0'));
+        }
+
+        std::wstring MakeHiddenSortKey(unsigned long long bytes)
+        {
+            wchar_t digits[32] = {};
+            StringCchPrintfW(digits, ARRAYSIZE(digits), L"%020llu", bytes);
+
+            std::wstring key;
+            key.reserve(42);
+            for (const wchar_t* p = digits; *p; ++p)
+            {
+                AppendUnicodeTagDigit(key, *p);
+            }
+
+            AppendCodePoint(key, 0xE007Fu);
+            return key;
+        }
+
         std::wstring JoinParts(const std::vector<std::wstring>& parts)
         {
             std::wstring out;
@@ -345,6 +379,11 @@ namespace MCRealDiskSize
             StringCchPrintfW(buffer, ARRAYSIZE(buffer), L"%.2f %s", value, units[unitIndex]);
 
         return buffer;
+    }
+
+    std::wstring FormatSortableBytes(unsigned long long bytes)
+    {
+        return MakeHiddenSortKey(bytes) + FormatBytes(bytes);
     }
 
     std::wstring GetCloudStatusText(const std::wstring& path, const MCNS::IFileItem* fileItem)
