@@ -347,6 +347,28 @@ namespace MCRealDiskSize
         return buffer;
     }
 
+    std::wstring FormatSortableBytes(unsigned long long bytes)
+    {
+        const wchar_t* units[] = { L"B", L"KB", L"MB", L"GB", L"TB", L"PB" };
+        double value = static_cast<double>(bytes);
+        size_t unitIndex = 0;
+
+        while (value >= 1024.0 && unitIndex < ARRAYSIZE(units) - 1)
+        {
+            value /= 1024.0;
+            ++unitIndex;
+        }
+
+        const unsigned int sortablePrefix = static_cast<unsigned int>(unitIndex);
+        wchar_t buffer[64] = {};
+        if (unitIndex == 0)
+            StringCchPrintfW(buffer, ARRAYSIZE(buffer), L"%u: %04llu B", sortablePrefix, bytes);
+        else
+            StringCchPrintfW(buffer, ARRAYSIZE(buffer), L"%u: %07.2f %s", sortablePrefix, value, units[unitIndex]);
+
+        return buffer;
+    }
+
     std::wstring GetCloudStatusText(const std::wstring& path, const MCNS::IFileItem* fileItem)
     {
         std::vector<std::wstring> parts;

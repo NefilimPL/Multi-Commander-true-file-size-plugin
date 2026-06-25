@@ -6,7 +6,7 @@ Plugin typu **FileProperties** dla Multi Commandera, który dodaje kolumny pokaz
 
 Po instalacji w konfiguracji kolumn powinny pojawić się kolumny z kategorii **Real Disk Size**:
 
-- **Rozmiar na dysku** / **Na dysku** – czytelny rozmiar, np. `0 B`, `128 KB`, `1.42 GB`.
+- **Rozmiar na dysku** / **Na dysku** – sortowalny tekst z rozmiarem, np. `0: 0000 B`, `1: 0128.00 KB`, `3: 0001.42 GB`.
 - **Rozmiar na dysku RAW** / **Na dysku RAW** – ta sama zerami uzupełniona liczba bajtów, przydatna diagnostycznie.
 - **Status lokalny/OneDrive** / **Status dysku** – atrybuty typu `ONLINE_ONLY`, `LOCAL_AVAILABLE`, `ALWAYS_LOCAL`, `UNPINNED`, `PINNED`, `OFFLINE`, `RECALL_ON_DATA_ACCESS`, `SPARSE`, `COMPRESSED`.
 
@@ -177,6 +177,15 @@ Plugin cache'uje wyliczony rozmiar na obiekcie pliku Multi Commandera, więc ró
 
 Kolumna `Na dysku` jest zarejestrowana jako właściwość tekstowa dla zgodności z Multi Commanderem 15.8. Zwraca czytelny tekst bezpośrednio z `GetPropStr`, bo próba użycia osobnej wartości wyświetlanej przez `GetDisplayValue` powodowała puste komórki w MC 15.8.
 
-Konsekwencja: sortowanie po czytelnej kolumnie `Na dysku` jest sortowaniem tekstowym. Do poprawnego sortowania według bajtów użyj kolumny `Na dysku RAW`, która pokazuje zerami uzupełnioną liczbę bajtów i sortuje się poprawnie jako tekst.
+Żeby sortowanie tekstowe nadal dawało kolejność według rozmiaru, widoczna wartość zaczyna się od prefiksu jednostki:
+
+- `0:` bajty
+- `1:` KB
+- `2:` MB
+- `3:` GB
+- `4:` TB
+- `5:` PB
+
+Po prefiksie plugin zwraca liczbę o stałej szerokości, np. `3: 0001.32 GB` i `1: 0004.00 KB`. Dzięki temu sortowanie malejące po kolumnie `Na dysku` ustawia `GB` nad `MB`, `KB` i `B`, zamiast porównywać tylko `1.32` z `4.00`. Kolumna `Na dysku RAW` nadal pokazuje zerami uzupełnioną liczbę bajtów i zostaje przydatna diagnostycznie.
 
 Jeżeli po aktualizacji Multi Commander zachowa stary układ albo ukryje kolumny, usuń stare kolumny z layoutu i dodaj je ponownie z `Customize columns...`. Nazwy maszynowe kolumn pozostały bez zmian.
