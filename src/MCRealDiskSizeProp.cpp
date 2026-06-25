@@ -138,12 +138,10 @@ long MCRealDiskSizeProp::PreStartInit(IMultiAppInterface* pAppInterface)
     fpd.IdealWidth = 95;
     fpd.Align = DT_RIGHT;
     // Keep this as STRING for MC 15.8 compatibility: numeric properties may load
-    // but render blank with the public SDK compatibility shim. GetPropStr returns
-    // a zero-padded byte key for sorting; GetDisplayValue shows readable text.
+    // but render blank with the public SDK compatibility shim.
     fpd.dwOptions = FILEPROP_STRING |
                     FILEPROP_ASYNC |
                     FILEPROP_CUSTOMIZABLE |
-                    FILEPROP_DONOTCACHEASDISPLAY |
                     FILEPROP_CLEAR_IF_UPDATED |
                     FILEPROP_CLEAR_IF_RENAMED;
     fpd.szPropName = L"MCRealDiskSize.Allocated";
@@ -208,24 +206,9 @@ bool MCRealDiskSizeProp::Close()
     return true;
 }
 
-bool MCRealDiskSizeProp::GetDisplayValue(IFileItem* pFileItem, WCHAR* propData, WORD nLen, WORD PropertyId, const volatile bool* pAbort)
+bool MCRealDiskSizeProp::GetDisplayValue(IFileItem* /*pFileItem*/, WCHAR* /*propData*/, WORD /*nLen*/, WORD /*PropertyId*/, const volatile bool* /*pAbort*/)
 {
-    if (!pFileItem || !propData || nLen == 0)
-        return false;
-
-    if (PropertyId != PROP_REAL_DISK_SIZE)
-        return false;
-
-    MCRealDiskSize::SizeResult result = GetAllocatedSizeForItem(pFileItem, pAbort);
-    if (!result.ok)
-    {
-        propData[0] = L'\0';
-        return true;
-    }
-
-    const std::wstring formatted = MCRealDiskSize::FormatBytes(result.bytes);
-    StringCchCopyW(propData, nLen, formatted.c_str());
-    return true;
+    return false;
 }
 
 bool MCRealDiskSizeProp::GetPropStr(IFileItem* pFileItem, WCHAR* propData, WORD nLen, WORD PropertyId, const volatile bool* pAbort)
@@ -243,8 +226,15 @@ bool MCRealDiskSizeProp::GetPropStr(IFileItem* pFileItem, WCHAR* propData, WORD 
             return true;
         }
 
-        // Zero-padded text keeps lexicographic sorting aligned with numeric sorting.
-        StringCchPrintfW(propData, nLen, L"%020llu", result.bytes);
+        if (PropertyId == PROP_REAL_DISK_SIZE_RAW)
+        {
+            // Zero-padded text keeps lexicographic sorting aligned with numeric sorting.
+            StringCchPrintfW(propData, nLen, L"%020llu", result.bytes);
+            return true;
+        }
+
+        const std::wstring formatted = MCRealDiskSize::FormatBytes(result.bytes);
+        StringCchCopyW(propData, nLen, formatted.c_str());
         return true;
     }
 

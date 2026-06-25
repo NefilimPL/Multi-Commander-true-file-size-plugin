@@ -6,7 +6,7 @@ Plugin typu **FileProperties** dla Multi Commandera, który dodaje kolumny pokaz
 
 Po instalacji w konfiguracji kolumn powinny pojawić się kolumny z kategorii **Real Disk Size**:
 
-- **Rozmiar na dysku** / **Na dysku** – czytelny rozmiar, np. `0 B`, `128 KB`, `1.42 GB`; sortowanie używa zerami uzupełnionego klucza bajtowego.
+- **Rozmiar na dysku** / **Na dysku** – czytelny rozmiar, np. `0 B`, `128 KB`, `1.42 GB`.
 - **Rozmiar na dysku RAW** / **Na dysku RAW** – ta sama zerami uzupełniona liczba bajtów, przydatna diagnostycznie.
 - **Status lokalny/OneDrive** / **Status dysku** – atrybuty typu `ONLINE_ONLY`, `LOCAL_AVAILABLE`, `ALWAYS_LOCAL`, `UNPINNED`, `PINNED`, `OFFLINE`, `RECALL_ON_DATA_ACCESS`, `SPARSE`, `COMPRESSED`.
 
@@ -175,8 +175,8 @@ Plugin cache'uje wyliczony rozmiar na obiekcie pliku Multi Commandera, więc ró
 
 ## Uwagi o sortowaniu i układzie kolumn
 
-Kolumna `Na dysku` jest zarejestrowana jako właściwość tekstowa dla zgodności z Multi Commanderem 15.8. Surowa wartość zwracana do Multi Commandera jest zerami uzupełnioną liczbą bajtów, dzięki czemu sortowanie tekstowe odpowiada sortowaniu numerycznemu, więc np. `2 GB` sortuje się powyżej `150 MB`.
+Kolumna `Na dysku` jest zarejestrowana jako właściwość tekstowa dla zgodności z Multi Commanderem 15.8. Zwraca czytelny tekst bezpośrednio z `GetPropStr`, bo próba użycia osobnej wartości wyświetlanej przez `GetDisplayValue` powodowała puste komórki w MC 15.8.
 
-Czytelny tekst w kolumnie `Na dysku` jest zwracany przez `GetDisplayValue`. Kolumna `Na dysku RAW` pozostaje tekstowa i pokazuje zerami uzupełnioną liczbę bajtów. Jest zostawiona jako awaryjna kolumna diagnostyczna.
+Konsekwencja: sortowanie po czytelnej kolumnie `Na dysku` jest sortowaniem tekstowym. Do poprawnego sortowania według bajtów użyj kolumny `Na dysku RAW`, która pokazuje zerami uzupełnioną liczbę bajtów i sortuje się poprawnie jako tekst.
 
 Jeżeli po aktualizacji Multi Commander zachowa stary układ albo ukryje kolumny, usuń stare kolumny z layoutu i dodaj je ponownie z `Customize columns...`. Nazwy maszynowe kolumn pozostały bez zmian.

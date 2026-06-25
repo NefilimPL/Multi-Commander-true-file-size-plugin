@@ -53,9 +53,9 @@ Assert-True ($allocatedColumnRegistration -match "FILEPROP_STRING") `
 Assert-False ($allocatedColumnRegistration -match "FILEPROP_NUM") `
     "The visible allocated-size column must not be FILEPROP_NUM until the Multi Commander numeric rendering issue is resolved."
 Assert-False ($allocatedColumnRegistration -match "FILEPROP_FORMATDISP") `
-    "The visible allocated-size column must use GetDisplayValue for readable display instead of numeric FormatDisplayValue."
-Assert-True ($allocatedColumnRegistration -match "FILEPROP_DONOTCACHEASDISPLAY") `
-    "The visible allocated-size column must not cache the zero-padded sort key as the displayed value."
+    "The visible allocated-size column must not rely on numeric FormatDisplayValue."
+Assert-False ($allocatedColumnRegistration -match "FILEPROP_DONOTCACHEASDISPLAY") `
+    "The visible allocated-size column must not rely on GetDisplayValue; Multi Commander 15.8 leaves that path blank for this plugin."
 
 $displayValueFunction = Get-Section `
     -Text $propSource `
@@ -63,10 +63,8 @@ $displayValueFunction = Get-Section `
     -EndPattern "bool MCRealDiskSizeProp::GetPropStr" `
     -Message "Could not find GetDisplayValue."
 
-Assert-True ($displayValueFunction -match "PROP_REAL_DISK_SIZE") `
-    "GetDisplayValue must handle the visible allocated-size column."
-Assert-True ($displayValueFunction -match "GetAllocatedSizeForItem" -and $displayValueFunction -match "FormatBytes") `
-    "GetDisplayValue must display the cached byte value as a readable size."
+Assert-False ($displayValueFunction -match "PROP_REAL_DISK_SIZE") `
+    "The visible allocated-size column must not depend on GetDisplayValue because that rendered blank in Multi Commander 15.8."
 
 $stringValueBranch = Get-Section `
     -Text $propSource `
@@ -74,10 +72,12 @@ $stringValueBranch = Get-Section `
     -EndPattern "if\s*\(PropertyId\s*==\s*PROP_CLOUD_STATUS\)" `
     -Message "Could not find the string value branch for size columns."
 
+Assert-True ($stringValueBranch -match "PropertyId\s*==\s*PROP_REAL_DISK_SIZE_RAW") `
+    "GetPropStr must keep a separate RAW branch for the zero-padded byte sort key."
 Assert-True ($stringValueBranch -match "StringCchPrintfW\(propData,\s*nLen,\s*L`"%020llu`",\s*result\.bytes\)") `
-    "GetPropStr must return a zero-padded byte string for size columns so text sorting remains numeric."
-Assert-False ($stringValueBranch -match "PropertyId\s*==\s*PROP_REAL_DISK_SIZE_RAW") `
-    "The visible and RAW size columns should use the same sortable string value; only GetDisplayValue should make the visible column readable."
+    "RAW must return a zero-padded byte string so text sorting remains numeric there."
+Assert-True ($stringValueBranch -match "FormatBytes\(result\.bytes\)" -and $stringValueBranch -match "StringCchCopyW\(propData,\s*nLen,\s*formatted\.c_str\(\)\)") `
+    "The visible allocated-size column must return readable text directly from GetPropStr."
 
 $allocatedFileFunction = Get-Section `
     -Text $diskSource `
