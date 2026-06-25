@@ -1,6 +1,7 @@
 # MCRealDiskSize
 
 Plugin typu **FileProperties** dla Multi Commandera, który dodaje kolumny pokazujące realny rozmiar zajęty lokalnie na dysku. Przydaje się szczególnie dla OneDrive Files On-Demand, gdzie plik może mieć logicznie np. 10 GB, ale lokalnie zajmować 0 B.
+<img width="949" height="706" alt="MultiCommander_cArY44Z7uV" src="https://github.com/user-attachments/assets/546884fc-5671-42ba-ac1f-9b55a8762b1d" />
 
 ## Co dodaje plugin
 
