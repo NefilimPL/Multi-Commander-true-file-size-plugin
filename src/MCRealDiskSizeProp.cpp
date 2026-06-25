@@ -233,7 +233,7 @@ bool MCRealDiskSizeProp::GetPropStr(IFileItem* pFileItem, WCHAR* propData, WORD 
             return true;
         }
 
-        const std::wstring formatted = MCRealDiskSize::FormatSortableBytes(result.bytes);
+        const std::wstring formatted = MCRealDiskSize::FormatBytes(result.bytes);
         StringCchCopyW(propData, nLen, formatted.c_str());
         return true;
     }
