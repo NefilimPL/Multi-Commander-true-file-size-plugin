@@ -294,3 +294,18 @@ bool MCRealDiskSizeProp::SetProp(IFileItem* /*pFileItem*/, WORD /*PropertyId*/, 
 {
     return false;
 }
+
+bool MCRealDiskSizeProp::Execute(ExecuteInfo* /*pExecuteInfo*/)
+{
+    return false;
+}
+
+bool MCRealDiskSizeProp::ReservedForMultiCommander25VTable0(IFileItem* /*pFileItem*/)
+{
+    return false;
+}
+
+bool MCRealDiskSizeProp::ReservedForMultiCommander25VTable1(IFileItem* /*pFileItem*/)
+{
+    return false;
+}

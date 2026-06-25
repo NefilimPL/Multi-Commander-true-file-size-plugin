@@ -22,7 +22,7 @@ Dla folderów plugin liczy rozmiar rekurencyjnie. Kolumna jest zarejestrowana ja
 
 Wersja `0.1.1.0` zawiera obejście problemu z ładowaniem w Multi Commander 15.8: aplikacja odrzuca pluginy zgłaszające interfejs SDK `2.4.0.0` jako zbyt stare, więc w `GetExtensionInfo()` wpisano `2.5.0.0` jako wersję interfejsu.
 
-To jest obejście zgodności, nie pełna aktualizacja SDK. Jeżeli plugin nadal nie załaduje się albo Multi Commander będzie niestabilny, usuń DLL z `Extensions\MCRealDiskSize` i poczekaj na publiczny SDK Multi Commander zgodny z 15.8.
+To jest obejście zgodności, nie pełna aktualizacja SDK. Publiczny SDK nadal deklaruje interfejs `2.4.0.0`, więc plugin utrzymuje dodatkowe puste sloty na końcu vtable `IFileProperties`, aby Multi Commander 15.8 nie wywoływał pamięci za końcem obiektu podczas odświeżania.
 
 ## Wymagania
 

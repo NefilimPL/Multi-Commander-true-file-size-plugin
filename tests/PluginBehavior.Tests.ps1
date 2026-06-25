@@ -40,6 +40,7 @@ function Get-Section {
 }
 
 $propSource = Get-Content -LiteralPath (Join-Path $repoRoot "src\MCRealDiskSizeProp.cpp") -Raw
+$propHeader = Get-Content -LiteralPath (Join-Path $repoRoot "src\MCRealDiskSizeProp.h") -Raw
 $diskSource = Get-Content -LiteralPath (Join-Path $repoRoot "src\DiskSizeUtil.cpp") -Raw
 
 $allocatedColumnRegistration = Get-Section `
@@ -77,16 +78,30 @@ Assert-True ($stringValueBranch -match "PropertyId\s*==\s*PROP_REAL_DISK_SIZE_RA
 Assert-True ($stringValueBranch -match "StringCchPrintfW\(propData,\s*nLen,\s*L`"%020llu`",\s*result\.bytes\)") `
     "RAW must return a zero-padded byte string so text sorting remains numeric there."
 Assert-True ($stringValueBranch -match "FormatSortableBytes\(result\.bytes\)" -and $stringValueBranch -match "StringCchCopyW\(propData,\s*nLen,\s*formatted\.c_str\(\)\)") `
-    "The visible allocated-size column must return sortable readable text directly from GetPropStr."
-
+    "The visible allocated-size column must prepend a hidden byte sort key so Multi Commander sorts it by bytes instead of readable text."
 Assert-True ($diskSource -match "std::wstring\s+FormatSortableBytes\(unsigned long long bytes\)") `
     "DiskSizeUtil must expose a sortable formatter for the visible allocated-size column."
 Assert-True ($diskSource -match "MakeHiddenSortKey\(bytes\)\s*\+\s*FormatBytes\(bytes\)") `
-    "The sortable formatter must keep the visible text identical to FormatBytes while prepending only a hidden sort key."
-Assert-True ($diskSource -match "AppendUnicodeTagDigit" -and $diskSource -match "0xE0030u") `
+    "The sortable formatter must keep the visible text readable while prepending only a hidden byte sort key."
+Assert-True ($diskSource -match "AppendUnicodeTagDigit" -and $diskSource -match "0xE0030u" -and $diskSource -match "0xE007Fu") `
     "The hidden sort key must encode padded byte digits as Unicode tag characters so they do not render in the column."
 Assert-False ($diskSource -match "L`"%u: %07\.2f %s`"" -or $diskSource -match "sortablePrefix") `
     "The visible allocated-size column must not show technical sort prefixes such as '3:' or fixed-width values."
+
+$vtableTailSection = Get-Section `
+    -Text $propHeader `
+    -StartPattern "bool SetProp\(IFileItem\* pFileItem,\s*WORD PropertyId,\s*const BYTE\* propData\) override;" `
+    -EndPattern "private:" `
+    -Message "Could not find the tail of MCRealDiskSizeProp's virtual method declarations."
+
+Assert-True ($vtableTailSection -match "bool Execute\(ExecuteInfo\* pExecuteInfo\) override;") `
+    "MCRealDiskSizeProp must explicitly keep Execute at the end of the public SDK 2.4 IFileProperties vtable."
+Assert-True ($vtableTailSection -match "virtual bool ReservedForMultiCommander25VTable0\(IFileItem\* pFileItem\);" -and
+             $vtableTailSection -match "virtual bool ReservedForMultiCommander25VTable1\(IFileItem\* pFileItem\);") `
+    "MCRealDiskSizeProp must reserve two additional tail vtable slots because Multi Commander 15.8 calls an IFileProperties entry at vtable offset +0x78 during refresh."
+Assert-True ($propSource -match "bool MCRealDiskSizeProp::ReservedForMultiCommander25VTable0\(IFileItem\* /\*pFileItem\*/\)\s*\{\s*return false;\s*\}" -and
+             $propSource -match "bool MCRealDiskSizeProp::ReservedForMultiCommander25VTable1\(IFileItem\* /\*pFileItem\*/\)\s*\{\s*return false;\s*\}") `
+    "The Multi Commander 15.8 reserved vtable slots must be implemented as safe no-op methods."
 
 $allocatedFileFunction = Get-Section `
     -Text $diskSource `
