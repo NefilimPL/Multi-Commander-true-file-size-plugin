@@ -18,12 +18,6 @@ Ten plugin **nie zmienia wbudowanej kolumny Size** i **nie zmienia działania `T
 Dla folderów plugin liczy rozmiar rekurencyjnie. Kolumna jest zarejestrowana jako asynchroniczna, ale przy bardzo dużych folderach nadal może to chwilę potrwać.
 
 
-## Ważne dla Multi Commander 15.8
-
-Wersja `0.1.1.0` zawiera obejście problemu z ładowaniem w Multi Commander 15.8: aplikacja odrzuca pluginy zgłaszające interfejs SDK `2.4.0.0` jako zbyt stare, więc w `GetExtensionInfo()` wpisano `2.5.0.0` jako wersję interfejsu.
-
-To jest obejście zgodności, nie pełna aktualizacja SDK. Publiczny SDK nadal deklaruje interfejs `2.4.0.0`, więc plugin utrzymuje dodatkowe puste sloty na końcu vtable `IFileProperties`, aby Multi Commander 15.8 nie wywoływał pamięci za końcem obiektu podczas odświeżania.
-
 ## Wymagania
 
 - Windows 10/11.
